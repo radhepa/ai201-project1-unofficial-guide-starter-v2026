@@ -106,30 +106,58 @@ The good: cheapest housing tier by about $900 a year, and the singles are real s
 
 ## Sample Answer
 
-<!-- One complete question and answer, pasted as text, with the source line
-     visible. Milestone 4. -->
-
-**Question:**
+**Question:** How much does a wash cost in the Aldridge Hall laundry room?
 
 **Answer:**
 
 ```
+A wash costs $1.75 in the Aldridge Hall laundry room.
+
+Source: housing_aldridge_hall.txt (and housing_aldridge_hall_laundry.txt)
 ```
 
-**My relevance cutoff:**
+This one is a good sample specifically because it's a hard case, not an easy
+one: the retrieved context also contained three *other* dorms' laundry posts
+with similar-looking prices (Old Brewhouse $1.50, Innisfree $1.75, Calder
+Annexe $2.00 — see `--show-prompt` output below), and the model still matched
+the right building to the right number instead of grabbing a nearby price.
 
-<!-- The number you set in config.py, and how you got there.
-
-     You ran five questions your corpus covers and the five in OUT_OF_SCOPE
-     that it clearly doesn't, and wrote down the best distance for each. What
-     did those two groups look like? Where was the gap? Put the actual numbers
-     here — the table below wants all ten rows.
-
-     Milestone 4. -->
+**My relevance cutoff:** I kept `THRESHOLD = 0.6` — the number the starter
+shipped with. I measured rather than assumed: I ran my five test questions and
+the five `OUT_OF_SCOPE` questions through `python app.py retrieve` and wrote
+down the best distance for each.
 
 | Question | In corpus? | Best distance |
 |---|---|---|
-|  |  |  |
+| What do students say about wait times at Kestrel Commons during lunch? | Yes | 0.262 |
+| How much does a wash cost in the Aldridge Hall laundry room? | Yes | 0.226 |
+| How many hours per week outside of class should I expect for CS 210? | Yes | 0.242 |
+| What is the campus printing quota per semester? | Yes | 0.337 |
+| Until what time is the library open during term? | Yes | 0.248 |
+| What is the capital of Mongolia? | No | 0.787 |
+| How do I change the oil in a diesel engine? | No | 0.923 |
+| Who won the 1994 World Cup? | No | 0.847 |
+| What is the recommended dosage of ibuprofen for a headache? | No | 0.824 |
+| How do I write a for loop in Rust? | No | 0.877 |
+
+The two groups didn't overlap at all: in-corpus questions landed between
+0.226 and 0.337, out-of-scope ones between 0.787 and 0.923 — a gap of about
+0.45 between them, much wider than I expected. 0.6 sits close to the middle of
+that gap (0.263 above the highest in-corpus reading, 0.187 below the lowest
+out-of-scope one), so I didn't move it. I'd only reconsider this if a future
+question landed inside the gap itself — nothing I've tried so far has.
+
+I also read the grounding prompt itself (`--show-prompt`) for the two
+laundry-cost questions above, since campus_life's near-duplicate dorm
+documents are exactly the case where a gate pass doesn't guarantee a correct
+*answer* — the gate only checks that something relevant came back, not that
+the model picked the right one out of several similar options sitting in the
+same prompt. Both times the model matched the named building to its own
+document correctly despite three other dorms' similar prices sitting right
+next to it in context, so I didn't tighten `GROUNDING_INSTRUCTION` — I didn't
+have evidence of drift to justify changing it. This is the exact thing
+criterion 5 exists to keep watching in unit 2, where more repeated runs give
+more chances for it to slip.
 
 ## How I Used AI
 
