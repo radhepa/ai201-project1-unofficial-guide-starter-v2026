@@ -1,6 +1,6 @@
 # The Unofficial Guide
 
-**Radhe Patel** — corpus: `campus_life`
+**Radhe Patel**, corpus: `campus_life`
 
 > **This file is your submission.** Fill it in as you go — most sections get
 > written during the milestone that produces them, not at the end.
@@ -21,60 +21,63 @@
 
 ## What This Does
 
-The Unofficial Guide answers questions about student life at this university,
-drawn from `campus_life`: 88 short posts about dining halls, dorms, courses,
-and the administrative rules nobody explains properly — the kind of thing one
-student writes to answer another's question. Ask it something specific and
-concrete, like "how much does laundry cost in Aldridge Hall?" or "how many
+The Unofficial Guide answers questions about student life at this university.
+It's built on `campus_life`, 88 short posts about dining halls, dorms,
+courses, and the administrative rules nobody ever explains properly, the kind
+of thing one student writes to answer another's question. Ask it something
+specific, like "how much does laundry cost in Aldridge Hall?" or "how many
 hours a week does CS 210 take?", and it finds the one post that actually
-answers it and names the file it came from, rather than guessing from general
-knowledge. Ask it something the corpus doesn't cover — a diesel engine, a Rust
-for-loop — and it says so instead of making something up.
+answers it and names the file it came from, instead of guessing from general
+knowledge. Ask it something the corpus doesn't cover, like a diesel engine or
+a Rust for loop, and it tells you it doesn't know instead of making something
+up.
 
 ## Chunking Strategy
 
-**Chunk size:** Not a fixed count — one paragraph per chunk (`chunker.py::split_documents`), with a 600-character ceiling that only applies if a single paragraph runs longer than that.
-**Overlap:** 80 characters, but only inside that 600-character fallback path. Paragraphs at the top level get no overlap.
+**Chunk size:** Not really a fixed number. It's one paragraph per chunk (`chunker.py::split_documents`), with a 600-character ceiling that only kicks in if a single paragraph runs longer than that.
+**Overlap:** 80 characters, and that only applies inside the 600-character fallback. Paragraphs at the top level don't overlap at all.
 
-The starter's fixed-800-character chunker reported 88 documents → 88 chunks
-for campus_life in Milestone 1 — it never split anything, because almost
-nothing here reaches 800 characters. But reading the documents showed every
-one of them is really a title line followed by one to four body paragraphs,
-and those paragraphs are genuinely separate facts, not a single thought
-spread out: a dining hall post separates wait times from hours-and-price, a
-course post separates format from workload from a piece of advice, a hall
-overview post separates what's good from what's bad from laundry cost from
-noise rules. Treating a whole multi-paragraph post as one chunk was the "too
-big" failure the brief describes — it would bury each fact under the others
-in the same vector, so it half-matches every question about that place and
-fully matches none.
+The starter's fixed 800-character chunker reported 88 documents turning into
+88 chunks for campus_life back in Milestone 1. It never split anything,
+because almost nothing here reaches 800 characters. But once I actually read
+through the documents, I noticed every one of them is really a title line
+followed by one to four body paragraphs, and those paragraphs are separate
+facts, not one thought stretched across sentences. A dining hall post
+separates wait times from hours and price. A course post separates format
+from workload from a piece of advice. A hall overview post separates what's
+good from what's bad from laundry cost from noise rules. Treating a whole
+multi-paragraph post as one chunk is the "too big" failure the brief warns
+about: it buries each fact under the others in the same vector, so it half
+matches every question about that place and fully matches none.
 
-So I split on paragraph breaks instead of a character count. The one thing
-that breaks on its own: the title line is always its own paragraph, and a
-title ("CS 210 Data Structures") is a fragment, not a sentence — the "too
-small" failure. I merge the title into the first body paragraph rather than
-emitting it alone. Checking paragraph lengths across the whole corpus, every
-body paragraph turned out to be a complete sentence on its own — even a
-36-character one ("Expect 4 hours a week outside class.") — so no other
-merging rule was needed; nothing here is a fragment except a bare title.
+So I split on paragraph breaks instead of a character count. There was one
+thing that broke on its own: the title line is always its own paragraph, and
+a title like "CS 210 Data Structures" is a fragment, not a sentence. That's
+the "too small" failure. So I merge the title into the first body paragraph
+instead of letting it stand alone. When I checked paragraph lengths across
+the whole corpus, every body paragraph turned out to be a complete sentence
+on its own, even a 36-character one ("Expect 4 hours a week outside class.").
+So no other merging rule was needed. Nothing here is a fragment except a
+bare title.
 
 600 characters comfortably covers the longest body paragraph I measured (373
-characters) with headroom for a longer one showing up later, so the fallback
-stays dormant on this corpus today — re-running `python app.py index` after
-switching confirms it: 183 chunks, 151 characters average, shortest 36,
-longest 397 (a merged title + paragraph), all produced by
-`chunker.py::split_documents`. 80 characters of overlap only matters inside
-that fallback, if a paragraph ever needs to be cut mid-thought — since I
-never saw that happen, it's a smaller, arbitrary number chosen only so the
-two pieces of a forced cut would still share a little context.
+characters), with room to spare if a longer one shows up later, so the
+fallback stays dormant on this corpus for now. Re-running `python app.py
+index` after switching confirms it: 183 chunks, 151 characters on average,
+shortest 36, longest 397 (a merged title plus paragraph), all produced by
+`chunker.py::split_documents`. The 80 characters of overlap only matter
+inside that fallback, if a paragraph ever needs to be cut mid-thought. Since
+I never actually saw that happen, it's a smaller, fairly arbitrary number I
+picked just so the two halves of a forced cut would still share a bit of
+context.
 
-I didn't change my mind partway — the title-line problem was visible before
-I wrote any code, since every document I read in Milestone 1 had the same
-shape.
+I didn't change my mind partway through this one. The title-line problem was
+visible before I wrote any code, since every document I read back in
+Milestone 1 had the same shape.
 
 ## Sample Chunks
 
-**Chunk 1** — source: `admin_add_drop_deadline.txt#0` — produced by: `chunker.py::split_documents`
+**Chunk 1**, source: `admin_add_drop_deadline.txt#0`, produced by: `chunker.py::split_documents`
 
 ```
 On the add/drop deadline
@@ -82,13 +85,13 @@ On the add/drop deadline
 You can add a course through the end of the second week. Dropping is a longer window — through the end of week six — but a drop after week two shows as a W on your transcript. Nothing anywhere on the registrar's site says this plainly, and students find out from each other.
 ```
 
-**Chunk 2** — source: `course_cs_340_exams.txt#1` — produced by: `chunker.py::split_documents`
+**Chunk 2**, source: `course_cs_340_exams.txt#1`, produced by: `chunker.py::split_documents`
 
 ```
 Start the term project in week three, not week eight; everyone learns this the hard way.
 ```
 
-**Chunk 3** — source: `course_phys_130_workload.txt#0` — produced by: `chunker.py::split_documents`
+**Chunk 3**, source: `course_phys_130_workload.txt#0`, produced by: `chunker.py::split_documents`
 
 ```
 Workload for PHYS 130 Mechanics
@@ -96,13 +99,13 @@ Workload for PHYS 130 Mechanics
 People keep asking so: 7 hours a week, plus 3 on lab weeks. That's real time, not optimistic time.
 ```
 
-**Chunk 4** — source: `dining_verrill_street_grill_followup.txt#1` — produced by: `chunker.py::split_documents`
+**Chunk 4**, source: `dining_verrill_street_grill_followup.txt#1`, produced by: `chunker.py::split_documents`
 
 ```
 Also worth saying: one register, so the queue is a single line no matter how busy. Nobody tells you this at orientation.
 ```
 
-**Chunk 5** — source: `housing_morrow_house.txt#1` — produced by: `chunker.py::split_documents`
+**Chunk 5**, source: `housing_morrow_house.txt#1`, produced by: `chunker.py::split_documents`
 
 ```
 The good: cheapest housing tier by about $900 a year, and the singles are real singles.
@@ -120,16 +123,16 @@ A wash costs $1.75 in the Aldridge Hall laundry room.
 Source: housing_aldridge_hall.txt (and housing_aldridge_hall_laundry.txt)
 ```
 
-This one is a good sample specifically because it's a hard case, not an easy
-one: the retrieved context also contained three *other* dorms' laundry posts
-with similar-looking prices (Old Brewhouse $1.50, Innisfree $1.75, Calder
-Annexe $2.00 — see `--show-prompt` output below), and the model still matched
-the right building to the right number instead of grabbing a nearby price.
+I picked this one on purpose because it's a hard case, not an easy one. The
+retrieved context also contained three *other* dorms' laundry posts with
+similar-looking prices (Old Brewhouse $1.50, Innisfree $1.75, Calder Annexe
+$2.00, see the `--show-prompt` output below), and the model still matched the
+right building to the right number instead of grabbing a nearby price.
 
-**My relevance cutoff:** I kept `THRESHOLD = 0.6` — the number the starter
-shipped with. I measured rather than assumed: I ran my five test questions and
-the five `OUT_OF_SCOPE` questions through `python app.py retrieve` and wrote
-down the best distance for each.
+**My relevance cutoff:** I kept `THRESHOLD = 0.6`, the number the starter
+shipped with, but I got there by measuring rather than assuming. I ran my
+five test questions and the five `OUT_OF_SCOPE` questions through `python
+app.py retrieve` and wrote down the best distance for each one.
 
 | Question | In corpus? | Best distance |
 |---|---|---|
@@ -144,47 +147,48 @@ down the best distance for each.
 | What is the recommended dosage of ibuprofen for a headache? | No | 0.824 |
 | How do I write a for loop in Rust? | No | 0.877 |
 
-The two groups didn't overlap at all: in-corpus questions landed between
-0.226 and 0.337, out-of-scope ones between 0.787 and 0.923 — a gap of about
-0.45 between them, much wider than I expected. 0.6 sits close to the middle of
-that gap (0.263 above the highest in-corpus reading, 0.187 below the lowest
-out-of-scope one), so I didn't move it. I'd only reconsider this if a future
-question landed inside the gap itself — nothing I've tried so far has.
+The two groups didn't overlap at all. In-corpus questions landed between
+0.226 and 0.337, out-of-scope ones between 0.787 and 0.923, a gap of about
+0.45 between them, which was wider than I expected. 0.6 sits close to the
+middle of that gap (0.263 above the highest in-corpus reading, 0.187 below
+the lowest out-of-scope one), so I left it alone. I'd only reconsider this if
+a future question landed inside the gap itself, and nothing I've tried so far
+has.
 
 I also read the grounding prompt itself (`--show-prompt`) for the two
-laundry-cost questions above, since campus_life's near-duplicate dorm
-documents are exactly the case where a gate pass doesn't guarantee a correct
-*answer* — the gate only checks that something relevant came back, not that
-the model picked the right one out of several similar options sitting in the
-same prompt. Both times the model matched the named building to its own
-document correctly despite three other dorms' similar prices sitting right
-next to it in context, so I didn't tighten `GROUNDING_INSTRUCTION` — I didn't
-have evidence of drift to justify changing it. This is the exact thing
-criterion 5 exists to keep watching in unit 2, where more repeated runs give
-more chances for it to slip.
+laundry-cost questions above. campus_life's near-duplicate dorm documents are
+exactly the case where a gate pass doesn't guarantee a correct *answer*: the
+gate only checks that something relevant came back, not that the model picked
+the right one out of several similar options sitting in the same prompt.
+Both times, the model matched the named building to its own document
+correctly despite three other dorms' similar prices sitting right next to it
+in context, so I didn't tighten `GROUNDING_INSTRUCTION`. I didn't have
+evidence of drift to justify changing it. This is exactly what criterion 5
+exists to keep watching in unit 2, where more repeated runs give it more
+chances to slip.
 
 ## How I Used AI
 
 **1.** For Milestone 3, I asked Claude to design and write the chunking
 function in `chunker.py` for `campus_life`, instead of just picking a
 character count myself. Rather than jump straight to paragraph splitting, it
-first computed title-length vs. body-paragraph-length statistics across all
-88 documents and found that every document's title line would end up as its
+first computed title-length and body-paragraph-length statistics across all
+88 documents, and found that every document's title line would end up as its
 own short fragment chunk if it split naively on blank lines. I had it add a
 merge step so the title always joins the first body paragraph instead of
-standing alone, and set `CHUNK_SIZE`/`CHUNK_OVERLAP` in `config.py` to only
-matter as a fallback for an oversized paragraph rather than as the real
+standing alone, and set `CHUNK_SIZE` and `CHUNK_OVERLAP` in `config.py` to
+only matter as a fallback for an oversized paragraph, not as the real
 chunk-size decision.
 
 **2.** While writing the "why this target" reasoning for my acceptance
 criteria (`criteria.md`), its first draft for criterion 1 claimed the
 Aldridge laundry-cost answer lived in only one document. Before I accepted
-that, I had it grep the corpus to check its own claim — it came back and
-found the $1.75 price is actually repeated across four different dorms'
-documents, which contradicted what it had just written. I had it rewrite both
-criterion 1's reasoning and criterion 5 (source attribution across
-near-duplicate dorms) to match what the grep actually showed, instead of
-leaving the incorrect claim in.
+that, I had it grep the corpus to check its own claim, and it came back
+having found that the $1.75 price is actually repeated across four different
+dorms' documents, which contradicted what it had just written. I had it
+rewrite both criterion 1's reasoning and criterion 5 (source attribution
+across near-duplicate dorms) to match what the grep actually showed instead
+of leaving the incorrect claim in.
 
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never

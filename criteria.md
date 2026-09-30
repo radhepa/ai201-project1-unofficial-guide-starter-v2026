@@ -25,13 +25,13 @@ contains the answer.
 **Why this target:** I checked how many documents actually contain each
 answer before picking this number, and only one of my five questions
 (printing quota, "$30") has its answer in a single document with nothing else
-to fall back on — that's the one question where a retrieval miss is
+to fall back on. That's the one question where a retrieval miss is
 unrecoverable. The other four turned out more redundant than I expected: the
 $1.75 laundry price is repeated across four different dorms' documents, "2am"
 library hours shows up in eight files (seven dorm noise posts plus the
 library-hours post itself), and the Kestrel Commons and CS 210 facts each
 appear in two documents about that same place. That redundancy is exactly why
-I'm not worried about criterion 1 — it's why I wrote criterion 5 instead,
+I'm not worried about criterion 1, and it's why I wrote criterion 5 instead,
 since a chunk containing the right *number* is not the same as it coming from
 the right *building or course*.
 
@@ -43,7 +43,7 @@ Every answer the system produces names at least one source document.
 
 **Why this target:** All five, because `generate.py`'s system prompt
 explicitly instructs the model to name the file for every answer, and my
-questions all produce short, single-fact answers — following a formatting
+questions all produce short, single-fact answers. Following a formatting
 instruction on a simple factual response is close to the easiest thing the
 model is asked to do here. This isn't code-enforced (nothing in `app.py`
 inserts the source line for the model), so it's a real instruction-following
@@ -64,8 +64,8 @@ in at least 4 of 5 tries.
      just keep five of them, or the "4 of 5" above has nothing to be 4 of. -->
 
 **Why this target:** I'm writing this before Milestone 4, so I haven't
-measured any actual distances yet — I don't want to justify a number with data
-I don't have. My five `OUT_OF_SCOPE` questions (Mongolia's capital, diesel oil
+measured any actual distances yet, and I don't want to justify a number with
+data I don't have. My five `OUT_OF_SCOPE` questions (Mongolia's capital, diesel oil
 changes, a 1994 World Cup winner, ibuprofen dosage, a Rust for-loop) are about
 as far from a university-life corpus as questions get, so I'd hope for 5 of 5.
 I'm setting 4 of 5 rather than claiming perfection up front, since "clearly
@@ -80,13 +80,13 @@ Milestone 4 gives me real numbers.
 Of 5 chunks sampled with `python app.py chunks -n 5`, at least 4 read as one
 complete post start to finish, with no sentence cut off at either end.
 
-**Why this target:** The documents I read in Milestone 1 are short —
-1 to 3 sentences, averaging about 317 characters — and Milestone 1's index run
+**Why this target:** The documents I read in Milestone 1 are short, 1 to 3
+sentences, averaging about 317 characters, and Milestone 1's index run
 already chunked all 88 documents into 88 chunks averaging 317 characters
 (shortest 178, longest 549), which means the current 800-character chunk size
 is producing roughly one chunk per document rather than splitting any of them.
 I'm not requiring 5 of 5 because the longest document I saw was 549
-characters — comfortably under 800 — but I haven't actually read all 88, and
+characters, comfortably under 800, but I haven't actually read all 88, and
 if a longer one exists near the 800-character boundary it could still get cut
 mid-sentence. This is the number Milestone 3 is supposed to test directly.
 
@@ -95,8 +95,8 @@ mid-sentence. This is the number Milestone 3 is supposed to test directly.
 ## 5. Your choice
 
 When a question names a specific dorm, dining hall, or course, the source the
-system names is that specific one — not a same-topic document about a
-different building or course — in at least 4 of 5 tries.
+system names is that specific one, not a same-topic document about a
+different building or course, in at least 4 of 5 tries.
 
 **Why this target:** I picked this after noticing, while checking criterion 1,
 that several of my "expected" facts aren't unique: the $1.75 wash price is the
