@@ -21,11 +21,15 @@
 
 ## What This Does
 
-<!-- Three or four sentences. Which corpus you picked, and the kinds of
-     questions your system answers. Write it for someone who has never seen
-     this repo.
-
-     Milestone 5. -->
+The Unofficial Guide answers questions about student life at this university,
+drawn from `campus_life`: 88 short posts about dining halls, dorms, courses,
+and the administrative rules nobody explains properly — the kind of thing one
+student writes to answer another's question. Ask it something specific and
+concrete, like "how much does laundry cost in Aldridge Hall?" or "how many
+hours a week does CS 210 take?", and it finds the one post that actually
+answers it and names the file it came from, rather than guessing from general
+knowledge. Ask it something the corpus doesn't cover — a diesel engine, a Rust
+for-loop — and it says so instead of making something up.
 
 ## Chunking Strategy
 
@@ -161,18 +165,26 @@ more chances for it to slip.
 
 ## How I Used AI
 
-<!-- Two specific moments. For each: what you asked for, what came back, and
-     what you changed about it.
+**1.** For Milestone 3, I asked Claude to design and write the chunking
+function in `chunker.py` for `campus_life`, instead of just picking a
+character count myself. Rather than jump straight to paragraph splitting, it
+first computed title-length vs. body-paragraph-length statistics across all
+88 documents and found that every document's title line would end up as its
+own short fragment chunk if it split naively on blank lines. I had it add a
+merge step so the title always joins the first body paragraph instead of
+standing alone, and set `CHUNK_SIZE`/`CHUNK_OVERLAP` in `config.py` to only
+matter as a fallback for an oversized paragraph rather than as the real
+chunk-size decision.
 
-     "I asked Claude to write the chunking function from my notes. It ignored
-     the overlap, so I added that myself" is the level of detail we're after.
-     "I used AI to help me code" is not.
-
-     Milestone 5. -->
-
-**1.**
-
-**2.**
+**2.** While writing the "why this target" reasoning for my acceptance
+criteria (`criteria.md`), its first draft for criterion 1 claimed the
+Aldridge laundry-cost answer lived in only one document. Before I accepted
+that, I had it grep the corpus to check its own claim — it came back and
+found the $1.75 price is actually repeated across four different dorms'
+documents, which contradicted what it had just written. I had it rewrite both
+criterion 1's reasoning and criterion 5 (source attribution across
+near-duplicate dorms) to match what the grep actually showed, instead of
+leaving the incorrect claim in.
 
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
