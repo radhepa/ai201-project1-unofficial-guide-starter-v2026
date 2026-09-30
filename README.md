@@ -29,53 +29,79 @@
 
 ## Chunking Strategy
 
-**Chunk size:**
-**Overlap:**
+**Chunk size:** Not a fixed count — one paragraph per chunk (`chunker.py::split_documents`), with a 600-character ceiling that only applies if a single paragraph runs longer than that.
+**Overlap:** 80 characters, but only inside that 600-character fallback path. Paragraphs at the top level get no overlap.
 
-<!-- What about YOUR documents made you pick these numbers? Short posts and
-     long sectioned guides don't want the same chunking, and "800 seemed
-     reasonable" earns nothing. Point at something you noticed when you read
-     the documents in Milestone 1.
+The starter's fixed-800-character chunker reported 88 documents → 88 chunks
+for campus_life in Milestone 1 — it never split anything, because almost
+nothing here reaches 800 characters. But reading the documents showed every
+one of them is really a title line followed by one to four body paragraphs,
+and those paragraphs are genuinely separate facts, not a single thought
+spread out: a dining hall post separates wait times from hours-and-price, a
+course post separates format from workload from a piece of advice, a hall
+overview post separates what's good from what's bad from laundry cost from
+noise rules. Treating a whole multi-paragraph post as one chunk was the "too
+big" failure the brief describes — it would bury each fact under the others
+in the same vector, so it half-matches every question about that place and
+fully matches none.
 
-     If you changed your mind partway through, say so and say why. That's worth
-     more than pretending you got it right first time.
+So I split on paragraph breaks instead of a character count. The one thing
+that breaks on its own: the title line is always its own paragraph, and a
+title ("CS 210 Data Structures") is a fragment, not a sentence — the "too
+small" failure. I merge the title into the first body paragraph rather than
+emitting it alone. Checking paragraph lengths across the whole corpus, every
+body paragraph turned out to be a complete sentence on its own — even a
+36-character one ("Expect 4 hours a week outside class.") — so no other
+merging rule was needed; nothing here is a fragment except a bare title.
 
-     Milestone 3. -->
+600 characters comfortably covers the longest body paragraph I measured (373
+characters) with headroom for a longer one showing up later, so the fallback
+stays dormant on this corpus today — re-running `python app.py index` after
+switching confirms it: 183 chunks, 151 characters average, shortest 36,
+longest 397 (a merged title + paragraph), all produced by
+`chunker.py::split_documents`. 80 characters of overlap only matters inside
+that fallback, if a paragraph ever needs to be cut mid-thought — since I
+never saw that happen, it's a smaller, arbitrary number chosen only so the
+two pieces of a forced cut would still share a little context.
+
+I didn't change my mind partway — the title-line problem was visible before
+I wrote any code, since every document I read in Milestone 1 had the same
+shape.
 
 ## Sample Chunks
 
-<!-- Five chunks, pasted as text. Label each one and name the file it came from
-     AND the function that produced it — the grader checks your code against
-     what you claim here.
-
-     `python app.py chunks -n 5` prints all three for you. Copy them straight
-     across.
-
-     Milestone 3. -->
-
-**Chunk 1** — source: `` — produced by: ``
+**Chunk 1** — source: `admin_add_drop_deadline.txt#0` — produced by: `chunker.py::split_documents`
 
 ```
+On the add/drop deadline
+
+You can add a course through the end of the second week. Dropping is a longer window — through the end of week six — but a drop after week two shows as a W on your transcript. Nothing anywhere on the registrar's site says this plainly, and students find out from each other.
 ```
 
-**Chunk 2** — source: `` — produced by: ``
+**Chunk 2** — source: `course_cs_340_exams.txt#1` — produced by: `chunker.py::split_documents`
 
 ```
+Start the term project in week three, not week eight; everyone learns this the hard way.
 ```
 
-**Chunk 3** — source: `` — produced by: ``
+**Chunk 3** — source: `course_phys_130_workload.txt#0` — produced by: `chunker.py::split_documents`
 
 ```
+Workload for PHYS 130 Mechanics
+
+People keep asking so: 7 hours a week, plus 3 on lab weeks. That's real time, not optimistic time.
 ```
 
-**Chunk 4** — source: `` — produced by: ``
+**Chunk 4** — source: `dining_verrill_street_grill_followup.txt#1` — produced by: `chunker.py::split_documents`
 
 ```
+Also worth saying: one register, so the queue is a single line no matter how busy. Nobody tells you this at orientation.
 ```
 
-**Chunk 5** — source: `` — produced by: ``
+**Chunk 5** — source: `housing_morrow_house.txt#1` — produced by: `chunker.py::split_documents`
 
 ```
+The good: cheapest housing tier by about $900 a year, and the singles are real singles.
 ```
 
 ## Sample Answer

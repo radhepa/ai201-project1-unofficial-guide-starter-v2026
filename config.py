@@ -24,11 +24,15 @@ CORPUS = os.getenv("AI201_CORPUS", "campus_life")
 
 
 # ─── Chunking (Milestone 3) ──────────────────────────────────────────────────
-# These are deliberately plain, generic numbers. Milestone 3 is where you
-# replace them with numbers that fit the documents you actually read.
+# chunker.py::split_documents chunks by paragraph, not by a fixed character
+# count, so these two numbers only matter as a safety net: they only fire if a
+# single paragraph is longer than CHUNK_SIZE, which never happens in
+# campus_life today (longest body paragraph is 373 characters). CHUNK_SIZE is
+# set comfortably above that so the fallback stays dormant on this corpus, and
+# CHUNK_OVERLAP only matters inside that fallback path.
 
-CHUNK_SIZE = 800        # characters per chunk
-CHUNK_OVERLAP = 120     # characters shared between neighbouring chunks
+CHUNK_SIZE = 600        # characters per chunk, fallback path only
+CHUNK_OVERLAP = 80      # characters shared between neighbouring chunks, fallback path only
 
 
 # ─── Retrieval (Milestone 4) ─────────────────────────────────────────────────
