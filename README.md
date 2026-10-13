@@ -212,9 +212,12 @@ brief allows one change and grades the diagnosis, not the pass rate.
 sampled chunks (16 of 88 posts whole, 52% of chunks missing their title).
 That's how the pattern linking criterion 4's miss to the wrong-building
 chunks in criteria 1 and 5 showed up. It also caught a wrong claim it had
-made in my Verdicts section (that Kestrel would fail a rank-based criterion
-1, when Kestrel's top chunk was actually correct) and replaced it with one
-it checked against the retrieval data.
+made in my Verdicts section. Its first tightened criterion 1 was "the
+top-ranked chunk is about the right place", and it said Kestrel would fail
+that, but Kestrel's top chunk (the Kestrel follow-up post) was actually
+correct. It replaced it with a top-3 version and checked that one against
+`results/retrieval_check_before.md` (Kestrel and Aldridge fail, CS 210
+passes).
 
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
@@ -247,7 +250,7 @@ it checked against the retrieval data.
 | 2. Every answer names a source | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
 | 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
 | 4. Sampled chunks are one complete post | 4 of 5 | 1/5 | 1/5 | 1/5 | MISSED |
-| 5. Named dorm/dining hall/course gets the right source | 4 of 5 (revised: 3 of 3) | 3/3 | 3/3 | 3/3 | REVISED, then MET |
+| 5. Named dorm/dining hall/course gets the right source | 4 of 5 (revised: 3 of 3) | 3/3 | 3/3 | 3/3 | MET (original and revised) |
 
 Evidence files, all committed in `results/`:
 
@@ -277,10 +280,13 @@ How each row was counted:
 **A note on how the run happened.** On 2026-10-13 Gemini was returning
 `503 UNAVAILABLE` ("model is experiencing high demand") on most calls, and
 `generate.py` only retries 429s, so `run_eval.py` crashed on its first call
-about 15 times in a row. I ran `run_eval.py` unchanged through a small wrapper
+15 times in a row (log in `results/console_before.md`). I ran `run_eval.py` unchanged through a small wrapper
 (kept outside the repo) that waits and retries a call only when Google answers
 503. The prompt, model, top-k, cutoff and code that produce answers were not
-touched. The run needed 8 retries.
+touched. The run needed 8 retries. The console output, including the
+wrapper's retry lines and the model-call and token counts printed by
+`generate.py::usage`, is in `results/console_before.md` and
+`results/console_after.md`.
 
 ### Real output (run 1 unless noted)
 
@@ -377,7 +383,7 @@ Source documents: `course_cs_210.txt` and `course_cs_210_workload.txt`
 | 2 | Every answer names a source, 5 of 5 | **MET** | 15 of 15 answers name at least one `.txt` file, in three different formats (inline brackets, a "Source:" line, a bulleted list). The target was all five on every run and it held on every run. |
 | 3 | Gate refuses out-of-corpus questions, 4 of 5 | **MET** | All 5 refused, and not narrowly: the closest off-topic question (Mongolia, 0.787) is 0.187 above the 0.6 cutoff, and the farthest real question (printing, 0.337) is 0.263 below it. |
 | 4 | 4 of 5 sampled chunks are one complete post | **MISSED** | 1/5 on all three runs. Only `admin_add_drop_deadline.txt#0` is a whole post. The other four have no sentence cut off, but each is only part of a post, and the criterion says "one complete post start to finish", not just "no cut sentences". |
-| 5 | Named dorm/dining hall/course gets the right source, 4 of 5 | **Can't be measured as written, so revised.** Under the revision: **MET** | Only 3 of my 5 questions name a specific dorm, dining hall or course, so there is no fifth try and "4 of 5" has nothing to count. The revision (in `criteria.md`, under the original) fixes what is counted and is stricter, not looser: every named source must be right, on 3 of 3 questions, on every run. Result: 3/3, 3/3, 3/3. |
+| 5 | Named dorm/dining hall/course gets the right source, 4 of 5 | **MET** (original and revised). Wording revised because it was ambiguous | Only 3 of my 5 questions name a specific dorm, dining hall or course, so there is no fifth try and "4 of 5" doesn't say what to count. The revision (in `criteria.md`, under the original) fixes what is counted and is stricter, not looser: every named source must be right, on 3 of 3 questions, on every run. Result: 3/3, 3/3, 3/3. The revision isn't what makes it pass: read either way the original could be meant (3 of 3 questions, or 9 of 9 question-runs), the result is at or above 4 of 5, so it is MET under the original too. The revision only removes the ambiguity. |
 
 ### The close calls, argued from the other side
 
@@ -459,9 +465,10 @@ chunks total:
 | 3 | 9 |
 | 4 | 7 |
 
-So only **16 of 183 chunks (9%) are a complete post**. A 5-chunk sample would
-be expected to contain about 0.45 whole posts, which means my 1/5 was not bad
-luck in the sample. If anything it was slightly lucky. The criterion can't be
+So only **16 of 183 chunks (9%) are a complete post**. At that rate 5 chunks
+would hold about 0.44 whole posts (5 × 16/183). The sampler is deterministic
+(every 36th chunk), so this is a rate rather than a probability, but either
+way my 1/5 was not bad luck in the sample. If anything it came out high. The criterion can't be
 met by this chunker on this corpus.
 
 **Why my target was wrong about it.** I wrote criterion 4 in commit
@@ -537,7 +544,7 @@ paragraph version is kept as `chunker.py::paragraph_split`, and it's still
 used as a fallback for any post over 600 characters, which none of the 88
 are (the longest is 549). Re-indexing with `python app.py index` gave 88
 chunks for 88 posts, averaging 317 characters. Nothing else changed: same
-questions, model, prompt, top-k 5 and cutoff 0.6. (The unit 1 Chunking Strategy section above still describes the paragraph chunker, on purpose, since it records what I built then.)
+questions, model, prompt, top-k 5 and cutoff 0.6. (The unit 1 Chunking Strategy and Sample Chunks sections above still describe the paragraph chunker, on purpose, since it records what I built then.)
 
 **Why I picked it:** The diagnosis traced criterion 4's miss to paragraph
 splitting keeping only 16 of 88 posts whole, and showed the same split was
@@ -560,7 +567,7 @@ single-fact questions should match their post *less* closely now.
 | 2. Every answer names a source | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
 | 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
 | 4. Sampled chunks are one complete post | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
-| 5. Named dorm/dining hall/course gets the right source | 4 of 5 (revised: 3 of 3) | 3/3 | 3/3 | 3/3 | MET (revised) |
+| 5. Named dorm/dining hall/course gets the right source | 4 of 5 (revised: 3 of 3) | 3/3 | 3/3 | 3/3 | MET (original and revised) |
 
 **Real output, after (run 1 unless noted):**
 
@@ -631,7 +638,7 @@ show what the change actually did:
 | Wrong-building chunks in Aldridge's top 3 | 2 | 1 |
 | Gap from worst real question to the cutoff (0.6) | 0.263 | **0.152** |
 | Gap from best off-topic question to the cutoff | 0.187 | 0.225 |
-| Input tokens for 15 answers | 6,177 | 9,027 (+46%) |
+| Input tokens for 15 answers (`generate.py::usage`, in `results/console_*.md`) | 6,177 | 9,027 (+46%) |
 
 **Did it help?**
 
@@ -732,8 +739,8 @@ any criterion.
   (CS 210's top 3 after the fix are CS 210, STAT 150, CS 340), which is a
   criterion that can actually tell two systems apart.
 - **Criterion 3: test the gate with near-misses.** Mongolia and Rust loops
-  are so far from campus life that any cutoff from about 0.45 to 0.78 would
-  have scored 5/5. I'd swap in campus-sounding questions the corpus doesn't
+  are so far from campus life that any cutoff from about 0.34 to 0.78 (before)
+  or 0.45 to 0.82 (after) would have scored 5/5. I'd swap in campus-sounding questions the corpus doesn't
   answer, so the criterion measures where the gate breaks.
 - **Criterion 4: tie it to the pipeline as it actually is.** I wrote it
   against the 800-character chunker and then replaced the chunker one commit

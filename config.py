@@ -24,14 +24,12 @@ CORPUS = os.getenv("AI201_CORPUS", "campus_life")
 
 
 # ─── Chunking (Milestone 3) ──────────────────────────────────────────────────
-# chunker.py::split_documents chunks by paragraph, not by a fixed character
-# count, so these two numbers only matter as a safety net: they only fire if a
-# single paragraph is longer than CHUNK_SIZE, which never happens in
-# campus_life today (longest body paragraph is 373 characters). CHUNK_SIZE is
-# set comfortably above that so the fallback stays dormant on this corpus, and
-# CHUNK_OVERLAP only matters inside that fallback path.
+# chunker.py::split_documents makes one chunk per whole post (unit 2). A post
+# longer than CHUNK_SIZE falls back to paragraph splitting, and a paragraph
+# longer than CHUNK_SIZE falls back to fixed windows with CHUNK_OVERLAP. Neither
+# fires on campus_life today (longest post is 549 characters).
 
-CHUNK_SIZE = 600        # characters per chunk, fallback path only
+CHUNK_SIZE = 600        # longest post kept whole as one chunk
 CHUNK_OVERLAP = 80      # characters shared between neighbouring chunks, fallback path only
 
 
