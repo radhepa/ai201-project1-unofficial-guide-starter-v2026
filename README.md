@@ -414,6 +414,92 @@ the original Kestrel post only comes in at rank 5 (distance 0.446).
 
      Milestone 3. -->
 
+### Criterion 4 (MISSED, 1/5): stage = chunking
+
+**Mechanism.** `chunker.py::split_documents` splits every post on blank
+lines (`re.split(r"\n\s*\n", ...)`), glues the title onto the first
+paragraph, and makes every later paragraph its own chunk. A post is only kept
+whole if it has exactly one body paragraph. Across the whole corpus that is
+16 of 88 posts. The other 72 are split into 2 to 4 chunks each, for 183
+chunks total:
+
+| Chunks per post | Posts |
+|---|---|
+| 1 (kept whole) | 16 |
+| 2 | 56 |
+| 3 | 9 |
+| 4 | 7 |
+
+So only **16 of 183 chunks (9%) are a complete post**. A 5-chunk sample would
+be expected to contain about 0.45 whole posts, which means my 1/5 was not bad
+luck in the sample. If anything it was slightly lucky. The criterion can't be
+met by this chunker on this corpus.
+
+**Why my target was wrong about it.** I wrote criterion 4 in commit
+`acf992a`, when the starter's 800-character chunker gave 88 chunks for 88
+posts. My "why this target" reasoning rests on that 88-for-88 number. One
+commit later (`2e97e2e`, Milestone 3) I replaced the chunker with paragraph
+splitting, which is *designed* to break posts apart, and never went back to
+check criterion 4 against it. That's not a measurement problem with the
+criterion (it's still easy to check), so I'm leaving it as a miss. The
+mistake was changing the chunker without re-reading the criterion that
+depended on it.
+
+### The pattern: split-off paragraphs lose their subject
+
+Breaking posts apart costs more than criterion 4. **95 of 183 chunks (52%)
+don't include the title line**, and the title is usually the only place a
+post names its dorm, dining hall or course. The clearest case is that all
+seven dorm overview posts end with a laundry paragraph in the same template,
+and each one becomes a chunk that never says which building it's about:
+
+```
+housing_aldridge_hall.txt#3  | Laundry costs $1.75 wash, $1.50 dry, card only. On noise: quiet floors ...
+housing_calder_annexe.txt#3  | Laundry costs $2.00 wash, $1.75 dry, app-based. On noise: depends enti...
+housing_innisfree_hall.txt#3 | Laundry costs $1.75 wash, $1.75 dry, app-based. On noise: moderate; th...
+housing_old_brewhouse.txt#3  | Laundry costs $1.50 wash, $1.50 dry, coin only, and the machines are o...
+```
+
+To the embedding model these are nearly the same sentence, so retrieval
+can't tell the buildings apart. It shows up in my "passed" results:
+
+- **Aldridge laundry question:** `housing_old_brewhouse.txt` (0.320) ranked
+  *above* Aldridge's own overview chunk (0.360), and Innisfree and Calder
+  Annexe were retrieved too. Three of the five retrieved chunks are about
+  the wrong building.
+- **Kestrel Commons wait-time question:** the original Kestrel post ranked
+  5th (0.446), behind follow-up posts about Halden Hall, The Ridgeway Café and
+  North Kitchen. Those are the same "wait figure" template with a different
+  name, and they outranked it.
+
+**So why did criterion 5 still pass?** Not because of retrieval. In
+`generate.py` (line 295) every chunk reaches the model labelled
+`[from <filename>]`, and the filename carries the building name the chunk
+text lost. The model picked the Aldridge chunk by reading
+`housing_aldridge_hall.txt`, not by reading the text. Criterion 5 passed
+because of the generation stage covering for the chunking stage. If my file
+names were `doc_017.txt`, I'd expect criterion 5 to fail.
+
+This is one problem showing up twice, not two problems. Criterion 4's miss
+and criterion 5's lucky pass have the same cause: chunks that don't carry
+their post's subject.
+
+### Everything else
+
+Criteria 1, 2 and 3 had no misses. As I wrote under Verdicts, that's partly
+because the targets were safe. The pattern above is why I'd tighten
+criterion 1 to "the top-ranked chunk is about the right place": under that
+rule, the Kestrel question would already fail today.
+
+### What this points the fix at
+
+Both findings point at the chunking stage, so that's where Milestone 4's one
+change goes: chunk by whole post instead of by paragraph. Posts are short
+(longest 549 characters, under the 600-character ceiling), so every
+post would become exactly one chunk with its title included. The risk is the
+trade-off I argued in unit 1, that whole posts bury each fact under the
+others. Criteria 1 and 5 will show whether that cost is real.
+
 ## The Improvement
 
 **What I changed:**
