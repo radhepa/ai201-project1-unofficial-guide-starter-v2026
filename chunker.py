@@ -83,6 +83,41 @@ def fallback_split(
 
 def split_documents(documents: list[Document]) -> list[Chunk]:
     """
+    One whole post per chunk (unit 2 improvement).
+
+    Unit 2's diagnosis found that paragraph chunking (`paragraph_split` below)
+    keeps only 16 of 88 posts whole, and that 95 of its 183 chunks lose the
+    title line, which is usually the only place a post names its dorm, dining
+    hall or course. "Laundry costs $1.75 wash..." with no building name is
+    nearly the same vector for every dorm. Every campus_life post is at most
+    549 characters, so each post fits in one chunk with its title kept.
+
+    A post longer than config.CHUNK_SIZE still falls back to paragraph
+    splitting, so a long document added later can't become one giant chunk.
+    """
+    chunks: list[Chunk] = []
+    for doc in documents:
+        text = doc.text.strip()
+        if not text:
+            continue
+        if len(text) > config.CHUNK_SIZE:
+            chunks.extend(paragraph_split([doc]))
+            continue
+        chunks.append(
+            Chunk(
+                text=text,
+                source=doc.source,
+                index=0,
+                produced_by="chunker.py::split_documents",
+            )
+        )
+    return chunks
+
+
+def paragraph_split(documents: list[Document]) -> list[Chunk]:
+    """
+    Unit 1's strategy, kept for the before/after comparison in unit 2.
+
     Split on paragraph breaks, one paragraph per chunk.
 
     campus_life's 88 documents are all shaped the same way: a one-line title,

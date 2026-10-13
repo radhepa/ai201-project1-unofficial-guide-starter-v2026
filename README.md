@@ -389,10 +389,13 @@ I tried to argue the opposite verdict for each one before settling on it.
 Probably. Clearing three criteria with no misses on the first try usually
 means the bar was safe. Criteria 1 and 3 were met by a wide margin: the
 real answers were always in the top 5, and the gate gap is about 0.45 wide.
-If I set them again I'd tighten criterion 1 to "the top-ranked chunk is
-about the right place and contains the answer, 5 of 5". The Kestrel
-question would fail that, because its top chunk is the follow-up post and
-the original Kestrel post only comes in at rank 5 (distance 0.446).
+If I set them again I'd tighten criterion 1 so it looks at *rank*, not just
+presence: "for questions that name a place or course, at least 2 of the top
+3 chunks are about that place or course". Checked against these same
+retrieval results, that would have failed 2 of my 3 named questions:
+Kestrel's top 3 were Kestrel, Halden Hall, The Ridgeway Café, and
+Aldridge's were Aldridge, Old Brewhouse, Innisfree. Criterion 1 as written
+couldn't see that.
 
 ## Diagnoses
 
@@ -488,8 +491,8 @@ their post's subject.
 
 Criteria 1, 2 and 3 had no misses. As I wrote under Verdicts, that's partly
 because the targets were safe. The pattern above is why I'd tighten
-criterion 1 to "the top-ranked chunk is about the right place": under that
-rule, the Kestrel question would already fail today.
+criterion 1 to look at rank (at least 2 of the top 3 chunks about the named
+place). Under that rule, Kestrel and Aldridge would already fail today.
 
 ### What this points the fix at
 
@@ -502,27 +505,129 @@ others. Criteria 1 and 5 will show whether that cost is real.
 
 ## The Improvement
 
-**What I changed:**
+**What I changed:** One thing, the chunking strategy. `chunker.py::split_documents`
+now makes one chunk per whole post instead of one per paragraph. The unit 1
+paragraph version is kept as `chunker.py::paragraph_split`, and it's still
+used as a fallback for any post over 600 characters, which none of the 88
+are (the longest is 549). Re-indexing with `python app.py index` gave 88
+chunks for 88 posts, averaging 317 characters. Nothing else changed: same
+questions, model, prompt, top-k 5 and cutoff 0.6.
 
-**Why I picked it:**
+**Why I picked it:** The diagnosis traced criterion 4's miss to paragraph
+splitting keeping only 16 of 88 posts whole, and showed the same split was
+stripping the title (the building or course name) from 52% of chunks.
+Whole-post chunks fix both at the stage where they happen.
 
-<!-- Connect it to a specific diagnosis above in one sentence. If you can't,
-     you picked a fix because it sounded impressive. -->
+**What I expected it to cost:** In unit 1 I chose paragraph chunks because a
+whole post "buries each fact under the others". If that was right, the
+single-fact questions should match their post *less* closely now.
 
 ### Run Log — After
 
-<!-- Same format, same five criteria, three runs each.
-     `python run_eval.py --label after` -->
+`results/run_2026-10-13_1018_after.md` (`run_eval.py --label after`, same
+503-only retry wrapper, which needed 8 retries),
+`results/retrieval_check_after.md` and `results/chunks_sample_after.md`.
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1. Retrieved chunk contains the answer | 4 of 5 |  |  |  |  |
-| 2. Every answer names a source | 5 of 5 |  |  |  |  |
-| 3. Gate stops out-of-corpus questions | 4 of 5 |  |  |  |  |
-| 4. | | | | | |
-| 5. | | | | | |
+| 1. Retrieved chunk contains the answer | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 2. Every answer names a source | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 4. Sampled chunks are one complete post | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 5. Named dorm/dining hall/course gets the right source | 4 of 5 (revised: 3 of 3) | 3/3 | 3/3 | 3/3 | MET (revised) |
+
+**Real output, after (run 1 unless noted):**
+
+Criterion 4 (`app.py::cmd_chunks`), every sampled chunk is now a full post,
+title included:
+
+```
+Chunk 3  |  source: course_hist_118_workload.txt#0  |  produced by: chunker.py::split_documents
+Workload for HIST 118 Modern World History
+
+People keep asking so: a lot of reading, about 120 pages a week, but no problem sets. That's real time, not optimistic time.
+
+It's front-loaded — the first month is heavier than the rest, partly because you're learning the format.
+```
+
+Criterion 1 (`store.py::search`), the Aldridge question's top 3. Both
+Aldridge chunks now rank 1st and 2nd, and every chunk carries its building
+name in the text:
+
+```
+1. `housing_aldridge_hall_laundry.txt` (distance 0.233): Laundry in Aldridge Hall  Machines take $1.75 wash, $1.50 dry, card only. ...
+2. `housing_aldridge_hall.txt` (distance 0.329): Aldridge Hall — what it's actually like  I lived here my sophomore year. ...
+3. `housing_innisfree_hall_laundry.txt` (distance 0.355): Laundry in Innisfree Hall  Machines take $1.75 wash, $1.75 dry, app-based. ...
+```
+
+Criteria 2 and 5 (`generate.py::answer_from_chunks`):
+
+```
+A wash costs $1.75 in the Aldridge Hall laundry room, as stated in the documents `housing_aldridge_hall_laundry.txt` and `housing_aldridge_hall.txt`.
+```
+
+```
+For CS 210, you should expect 8 to 10 hours a week outside of class (course_cs_210_workload.txt).
+```
+
+Criterion 3 (`run_eval.py::check_out_of_scope`):
+
+```
+  refused  (best distance 0.825)  What is the capital of Mongolia?
+  refused  (best distance 0.934)  How do I change the oil in a diesel engine?
+  refused  (best distance 0.886)  Who won the 1994 World Cup?
+  refused  (best distance 0.844)  What is the recommended dosage of ibuprofen for a headache?
+  refused  (best distance 0.896)  How do I write a for loop in Rust?
+  -> gate refused 5 of 5
+```
+
+### Side by side
+
+| Criterion | Before (3 runs) | After (3 runs) | Change |
+|---|---|---|---|
+| 1. Answer in retrieved chunks | 5/5, 5/5, 5/5 | 5/5, 5/5, 5/5 | same |
+| 2. Answer names a source | 5/5, 5/5, 5/5 | 5/5, 5/5, 5/5 | same |
+| 3. Gate refuses off-topic | 5/5, 5/5, 5/5 | 5/5, 5/5, 5/5 | same |
+| 4. Chunk is a whole post | 1/5, 1/5, 1/5 (MISSED) | 5/5, 5/5, 5/5 (MET) | **fixed** |
+| 5. Right named source (revised) | 3/3, 3/3, 3/3 | 3/3, 3/3, 3/3 | same |
+
+The headline numbers only show criterion 4 moving. The distances underneath
+show what the change actually did:
+
+| Measure | Before | After |
+|---|---|---|
+| Chunks in the index | 183 | 88 |
+| Chunks without their title line | 95 (52%) | 0 |
+| Best distance: library question | 0.248 | **0.448** (worse) |
+| Best distance: CS 210 question | 0.242 | 0.262 (slightly worse) |
+| Best distance: Aldridge / Kestrel / printing | 0.226 / 0.262 / 0.337 | 0.233 / 0.259 / 0.337 (about the same) |
+| Rank of `study_library_hours.txt` for the library question | 1st | **2nd**, behind `admin_library_holds.txt` |
+| Wrong-building chunks in Aldridge's top 3 | 2 | 1 |
+| Gap from worst real question to the cutoff (0.6) | 0.263 | **0.152** |
+| Gap from best off-topic question to the cutoff | 0.187 | 0.225 |
+| Input tokens for 15 answers | 6,177 | 9,027 (+46%) |
 
 **Did it help?**
+
+Yes for what it was aimed at, with a real cost I can measure. Criterion 4
+went from 1/5 to 5/5 on all three runs, and the subject-loss problem is gone:
+no chunk is missing its title now, and the Aldridge question's top two
+results are both Aldridge. Nothing that passed before started failing.
+
+But my unit 1 worry was partly right. The library question's best distance
+went from 0.248 to 0.448 because "open until 2am" is now one line inside a
+longer post about where to sit, and the right post dropped to 2nd behind a
+post about library *holds*. The answer still came out right on every run,
+because the correct post was still in the top 5. The safety margin under the
+gate shrank, though: the worst real question now sits 0.152 below the
+cutoff instead of 0.263. A longer post with one key fact could plausibly end
+up on the wrong side of 0.6, and the gate would refuse a question the corpus
+can answer. Bigger chunks also mean 46% more input tokens per answer.
+
+So the change fixed the criterion it targeted and the retrieval problem
+behind it, and paid for it in how sharply single facts inside longer posts
+can be matched. I can tell because the per-question distances moved, not
+just the pass counts.
 
 <!-- Say plainly whether it did, and how you know. If it made things worse,
      say that — a change that backfired, honestly reported, earns full credit
