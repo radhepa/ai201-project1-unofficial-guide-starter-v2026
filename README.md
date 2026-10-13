@@ -190,6 +190,32 @@ rewrite both criterion 1's reasoning and criterion 5 (source attribution
 across near-duplicate dorms) to match what the grep actually showed instead
 of leaving the incorrect claim in.
 
+**Unit 2.**
+
+**3.** I used Claude to run the evaluation and aggregate it. When Gemini kept
+returning 503s, it suggested editing `generate.py` to retry them, then
+pointed out that would be a second change to the system. Instead it wrote a
+wrapper outside the repo that retries only 503s, so the answers came from
+unchanged code. I told it to go ahead with that, and the README says so
+under Run Log — Before. It also turned the per-question results file into
+the per-criterion table and saved the retrieved chunk text separately, since
+criterion 1 is about the chunks and not the answers.
+
+**4.** For the verdicts I had it argue the opposite verdict on each
+criterion. That is where the "loosen criterion 4 to *no sentence cut off*"
+idea came up and got rejected as loosening a missed target, and where the
+plain text search for "$1.75" turned out to over-count (Calder Annexe's dry
+price). When I said I wanted every criterion fixed, it pushed back that the
+brief allows one change and grades the diagnosis, not the pass rate.
+
+**5.** For the diagnosis it measured the whole corpus instead of just the 5
+sampled chunks (16 of 88 posts whole, 52% of chunks missing their title).
+That's how the pattern linking criterion 4's miss to the wrong-building
+chunks in criteria 1 and 5 showed up. It also caught a wrong claim it had
+made in my Verdicts section (that Kestrel would fail a rank-based criterion
+1, when Kestrel's top chunk was actually correct) and replaced it with one
+it checked against the retrieval data.
+
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
      claims earns nothing.
@@ -511,7 +537,7 @@ paragraph version is kept as `chunker.py::paragraph_split`, and it's still
 used as a fallback for any post over 600 characters, which none of the 88
 are (the longest is 549). Re-indexing with `python app.py index` gave 88
 chunks for 88 posts, averaging 317 characters. Nothing else changed: same
-questions, model, prompt, top-k 5 and cutoff 0.6.
+questions, model, prompt, top-k 5 and cutoff 0.6. (The unit 1 Chunking Strategy section above still describes the paragraph chunker, on purpose, since it records what I built then.)
 
 **Why I picked it:** The diagnosis traced criterion 4's miss to paragraph
 splitting keeping only 16 of 88 posts whole, and showed the same split was
@@ -646,9 +672,79 @@ just the pass counts.
 
      Milestone 5. -->
 
+After the fix, none of my five criteria is missed. That doesn't mean nothing
+is broken. It mostly means my criteria weren't looking at the things below.
+
+**1. The library question is now matched weakly and ranked second.** Whole-post
+chunks pushed its best distance from 0.248 to 0.448, and
+`admin_library_holds.txt` now outranks `study_library_hours.txt`. It still
+answers correctly because the right post is in the top 5. *What I'd do:* add
+hybrid search (BM25 next to the embeddings). "Library" and "2am" are exact
+words that keyword search would rank the hours post first on, and it's the
+other option from the Milestone 4 menu. *Why I stopped:* the brief allows
+one change per unit, and adding BM25 on top of the chunking change would
+make it impossible to tell which one moved which number.
+
+**2. The gate's safety margin got thinner.** The worst real question is now
+0.152 under the 0.6 cutoff (it was 0.263). My five off-topic questions are
+all very far away (0.825 and up), so they don't tell me where the gate
+would start making mistakes. *What I'd do:* add harder off-topic questions
+that sound like they belong, like "What time does the campus gym open?",
+which is campus life but not in the corpus. Then re-tune the cutoff from the
+gap between those and my real questions. *Why I stopped:* same one-change
+rule. Changing the cutoff is a system change.
+
+**3. Criterion 5 may still be leaning on filenames.** Before the fix, the
+diagnosis showed the model picked the right building from the
+`[from housing_aldridge_hall.txt]` label in `generate.py`, not from the chunk
+text. After the fix, every chunk names its building in its own text, so this
+*should* matter less. But I haven't proven it, because the filename label is
+still there. *What I'd do:* re-run criterion 5 with the labels replaced by
+neutral IDs and see if it still passes. *Why I stopped:* it's a
+diagnostic experiment, not a fix, and I ran out of room for a second
+measured change.
+
+**4. Answers cite padding sources.** The library answers name
+`study_library_hours.txt` plus two dorm noise posts that only mention the
+library in passing. That's accurate but not what a reader wants. No
+criterion checks for it, so I haven't measured how often it happens.
+
+**5. The pipeline isn't robust to a busy API.** `generate.py` retries only on
+429 (rate limit). On 2026-10-13 Gemini returned 503 on most calls and every
+plain `run_eval.py` attempt crashed on its first question. I worked around it
+for the evaluation without touching `generate.py` (see the note under Run
+Log — Before). A real user of `app.py ask` would just get a crash. *Why I
+left it:* it would have been a second system change, and it doesn't affect
+any criterion.
+
 ## What I'd Do Differently
 
 <!-- Knowing what you know now — which of your five criteria would you write
      differently, and why?
 
      Milestone 5. -->
+
+- **Criterion 1: check rank, not just presence.** "The answer is somewhere in
+  the top 5" was too easy. It passed 5/5 while three wrong-building chunks
+  sat in Aldridge's results. I'd write "for questions that name a place or
+  course, at least 2 of the top 3 chunks are about it". On my real data that
+  would have failed 2 of 3 named questions before the fix and 1 of 3 after
+  (CS 210's top 3 after the fix are CS 210, STAT 150, CS 340), which is a
+  criterion that can actually tell two systems apart.
+- **Criterion 3: test the gate with near-misses.** Mongolia and Rust loops
+  are so far from campus life that any cutoff from about 0.45 to 0.78 would
+  have scored 5/5. I'd swap in campus-sounding questions the corpus doesn't
+  answer, so the criterion measures where the gate breaks.
+- **Criterion 4: tie it to the pipeline as it actually is.** I wrote it
+  against the 800-character chunker and then replaced the chunker one commit
+  later without re-reading it. Next time, any criterion about a stage gets
+  re-checked whenever that stage changes.
+- **Criterion 5: count the denominator before picking the number.** I wrote
+  "4 of 5" when only 3 of my questions could qualify. I'd write the
+  qualifying questions into the criterion itself, as the revision does, and
+  add two more named-place questions so it's out of 5 for real.
+- **No `scorer.py`.** I judged every answer by reading it. That worked for 15
+  short answers, but my first automated check (a plain text search for
+  "$1.75") wrongly counted Calder Annexe's *dry* price as an Aldridge
+  answer. A real scorer would have to check the source as well as the
+  string, and I'd build it before the next test unit instead of after.
