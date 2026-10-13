@@ -217,15 +217,122 @@ of leaving the incorrect claim in.
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1. Retrieved chunk contains the answer | 4 of 5 |  |  |  |  |
-| 2. Every answer names a source | 5 of 5 |  |  |  |  |
-| 3. Gate stops out-of-corpus questions | 4 of 5 |  |  |  |  |
-| 4. | | | | | |
-| 5. | | | | | |
+| 1. Retrieved chunk contains the answer | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 2. Every answer names a source | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 4. Sampled chunks are one complete post | 4 of 5 | 1/5 | 1/5 | 1/5 | MISSED |
+| 5. Named dorm/dining hall/course gets the right source | 4 of 5 | 3/3 | 3/3 | 3/3 | see Verdicts |
 
-<!-- Underneath, paste the REAL output for each criterion from one of your
-     runs — the actual text your system produced, not a description of it.
-     Name the file and function that produced it. -->
+Evidence files, all committed in `results/`:
+
+- `run_2026-10-13_0947_before.md`: `python run_eval.py --label before`. All 5
+  questions × 3 runs with caching off (15 real model calls), plus the gate pass
+  over the 5 `OUT_OF_SCOPE` questions. No `scorer.py`, so I judged each answer
+  by reading it.
+- `retrieval_check_before.md`: the text of every chunk `store.py::search`
+  returned for each question, so criterion 1 is checked against the chunks
+  themselves and not against the answer.
+- `chunks_sample_before.md`: `python app.py chunks -n 5`, run three times.
+
+How each row was counted:
+
+- **Criteria 1 and 3** depend only on retrieval and the gate, which are
+  deterministic (the best distance was identical across all three runs for
+  every question), so the same number goes in all three columns.
+- **Criterion 4** is also deterministic. `app.py::cmd_chunks` picks every Nth
+  chunk with no randomness, and the three runs printed byte-identical output.
+- **Criteria 2 and 5** depend on the generated answer, so they're the ones
+  that could have moved. They didn't.
+- **Criterion 5**: only 3 of my 5 questions name a specific dorm, dining hall
+  or course (Kestrel Commons, Aldridge Hall, CS 210). The printing and library
+  questions don't, so there is no fifth try to count. That's why the cells
+  read 3/3 and not x/5. More on this under Verdicts.
+
+**A note on how the run happened.** On 2026-10-13 Gemini was returning
+`503 UNAVAILABLE` ("model is experiencing high demand") on most calls, and
+`generate.py` only retries 429s, so `run_eval.py` crashed on its first call
+about 15 times in a row. I ran `run_eval.py` unchanged through a small wrapper
+(kept outside the repo) that waits and retries a call only when Google answers
+503. The prompt, model, top-k, cutoff and code that produce answers were not
+touched. The run needed 8 retries.
+
+### Real output (run 1 unless noted)
+
+**Criterion 1, retrieved chunks** (`store.py::search`, from
+`results/retrieval_check_before.md`). Printing quota is the only question
+with its answer in a single document, and it still came back first:
+
+```
+- CONTAINS `admin_printing_quota.txt` (distance 0.337): On the printing quota  Every student gets $30 of printing per semester, which is roughly 600 black-and-white pages. It does not roll over. ...
+-          `money_textbooks.txt` (distance 0.556): The campus store price-matches, ...
+-          `money_jobs.txt` (distance 0.561): Maximum is 20 hours a week during term. ...
+-          `admin_graduation_requirements.txt` (distance 0.591): On the graduation requirements  120 credit hours, ...
+-          `money_textbooks.txt` (distance 0.610): Textbooks without paying full price  ...
+```
+
+**Criterion 2, answers name a source** (`generate.py::answer_from_chunks`,
+called from `run_eval.py::run_once`):
+
+```
+Every student gets $30 of printing per semester, which is roughly 600 black-and-white pages (admin_printing_quota.txt).
+```
+
+```
+A wash costs $1.75 in the Aldridge Hall laundry room (housing_aldridge_hall_laundry.txt and housing_aldridge_hall.txt).
+```
+(run 2)
+
+**Criterion 3, the gate** (`run_eval.py::check_out_of_scope`, cutoff 0.6):
+
+```
+  refused  (best distance 0.787)  What is the capital of Mongolia?
+  refused  (best distance 0.923)  How do I change the oil in a diesel engine?
+  refused  (best distance 0.847)  Who won the 1994 World Cup?
+  refused  (best distance 0.824)  What is the recommended dosage of ibuprofen for a headache?
+  refused  (best distance 0.877)  How do I write a for loop in Rust?
+  -> gate refused 5 of 5
+```
+
+**Criterion 4, sampled chunks** (`app.py::cmd_chunks`, chunks from
+`chunker.py::split_documents`). 183 chunks total for 88 documents. Only
+chunk 1 is a whole post; 3 is a title plus the first of two paragraphs, and
+2, 4 and 5 are a single paragraph from the middle or end of a post:
+
+```
+Chunk 1  |  source: admin_add_drop_deadline.txt#0
+On the add/drop deadline
+
+You can add a course through the end of the second week. Dropping is a longer window — through the end of week six — but a drop after week two shows as a W on your transcript. Nothing anywhere on the registrar's site says this plainly, and students find out from each other.
+
+Chunk 2  |  source: course_cs_340_exams.txt#1
+Start the term project in week three, not week eight; everyone learns this the hard way.
+
+Chunk 3  |  source: course_phys_130_workload.txt#0
+Workload for PHYS 130 Mechanics
+
+People keep asking so: 7 hours a week, plus 3 on lab weeks. That's real time, not optimistic time.
+
+Chunk 4  |  source: dining_verrill_street_grill_followup.txt#1
+Also worth saying: one register, so the queue is a single line no matter how busy. Nobody tells you this at orientation.
+
+Chunk 5  |  source: housing_morrow_house.txt#1
+The good: cheapest housing tier by about $900 a year, and the singles are real singles.
+```
+
+**Criterion 5, the right building or course** (`generate.py::answer_from_chunks`).
+All three qualifying questions cited the matching document in all three runs:
+
+```
+Students say that wait times at Kestrel Commons are 20 to 25 minutes between 12:15 and 1:00, and under 5 minutes before 11:45. 
+
+Source: `dining_kestrel_commons.txt` (supported by `dining_kestrel_commons_followup.txt`).
+```
+
+```
+You should expect 8 to 10 hours a week outside class for CS 210. 
+
+Source documents: `course_cs_210.txt` and `course_cs_210_workload.txt`
+```
 
 ## Verdicts
 
