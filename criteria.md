@@ -111,6 +111,21 @@ price shared across several buildings, at least one mix-up between
 same-topic, same-number documents feels like the realistic case rather than
 the unlucky one.
 
+> **Revised in unit 2:** For every test question that names a specific dorm,
+> dining hall, or course (3 of my 5: Kestrel Commons, Aldridge Hall, CS 210),
+> every source file the answer names is about that same place or course. The
+> target is 3 of 3 of those questions on each of the 3 runs.
+>
+> **Why revised:** The original couldn't be measured. Only 3 of my 5
+> questions name a specific place or course (the printing quota and library
+> questions don't), so there were never 5 tries to get 4 of. It was also
+> ambiguous in two ways I couldn't score the same way twice: whether "tries"
+> meant questions or runs, and which source counts when an answer names more
+> than one file. The revision fixes the count (questions, checked on every
+> run) and the rule for multiple sources (all of them must match). Requiring
+> every named source to match, and 3 of 3 instead of roughly 80%, makes it
+> stricter than the original, not looser.
+
 
 
 ---

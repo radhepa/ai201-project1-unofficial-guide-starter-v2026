@@ -221,7 +221,7 @@ of leaving the incorrect claim in.
 | 2. Every answer names a source | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
 | 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
 | 4. Sampled chunks are one complete post | 4 of 5 | 1/5 | 1/5 | 1/5 | MISSED |
-| 5. Named dorm/dining hall/course gets the right source | 4 of 5 | 3/3 | 3/3 | 3/3 | see Verdicts |
+| 5. Named dorm/dining hall/course gets the right source | 4 of 5 (revised: 3 of 3) | 3/3 | 3/3 | 3/3 | REVISED, then MET |
 
 Evidence files, all committed in `results/`:
 
@@ -347,11 +347,52 @@ Source documents: `course_cs_210.txt` and `course_cs_210_workload.txt`
 
 | # | Criterion | Verdict | How I decided |
 |---|---|---|---|
-| 1 |  |  |  |
-| 2 |  |  |  |
-| 3 |  |  |  |
-| 4 |  |  |  |
-| 5 |  |  |  |
+| 1 | Retrieved chunks contain the answer, 4 of 5 | **MET** | 5/5 on all three runs. I read the retrieved chunk text for each question (`results/retrieval_check_before.md`), not the answers, and every question had at least one chunk that states the answer for the right place or course. |
+| 2 | Every answer names a source, 5 of 5 | **MET** | 15 of 15 answers name at least one `.txt` file, in three different formats (inline brackets, a "Source:" line, a bulleted list). The target was all five on every run and it held on every run. |
+| 3 | Gate refuses out-of-corpus questions, 4 of 5 | **MET** | All 5 refused, and not narrowly: the closest off-topic question (Mongolia, 0.787) is 0.187 above the 0.6 cutoff, and the farthest real question (printing, 0.337) is 0.263 below it. |
+| 4 | 4 of 5 sampled chunks are one complete post | **MISSED** | 1/5 on all three runs. Only `admin_add_drop_deadline.txt#0` is a whole post. The other four have no sentence cut off, but each is only part of a post, and the criterion says "one complete post start to finish", not just "no cut sentences". |
+| 5 | Named dorm/dining hall/course gets the right source, 4 of 5 | **Can't be measured as written, so revised.** Under the revision: **MET** | Only 3 of my 5 questions name a specific dorm, dining hall or course, so there is no fifth try and "4 of 5" has nothing to count. The revision (in `criteria.md`, under the original) fixes what is counted and is stricter, not looser: every named source must be right, on 3 of 3 questions, on every run. Result: 3/3, 3/3, 3/3. |
+
+### The close calls, argued from the other side
+
+I tried to argue the opposite verdict for each one before settling on it.
+
+- **Criterion 1, could it be a MISS?** My first check was a plain text
+  search for the expected string, and it counted
+  `housing_calder_annexe.txt` as containing "$1.75" for the Aldridge
+  question. It does, but as Calder's *dry* price. A text search over-counts,
+  so I judged by reading instead. The verdict survives because the
+  Aldridge question also retrieved two Aldridge chunks that really do say
+  "$1.75 wash". But this shows the criterion is only as good as the person
+  reading the chunks.
+- **Criterion 2, could it be a MISS?** The library answers name
+  `study_library_hours.txt` and also four dorm noise posts. Those posts do say
+  "the library is open until 2am", so the citations are accurate, just
+  padded. Criterion 2 asks only that a source is named, so MET stands. Citing
+  the right one is criterion 5's job.
+- **Criterion 4, could it be MET?** The tempting argument is that paragraph
+  chunking is *supposed* to split posts, so the criterion is measuring the
+  wrong thing. I rejected that. The criterion is perfectly measurable (I can
+  look at a chunk and say whether it's a whole post), and rewriting it to "no
+  sentence cut off" would turn a 1/5 into a 5/5 without anything changing.
+  That is loosening a missed target, which the brief rules out. It stays
+  MISSED and gets diagnosed.
+- **Criterion 5, am I revising it because it was inconvenient?** No. It
+  passed on everything it could measure (3/3). The problem was that the
+  denominator didn't exist, plus two ambiguities I couldn't score the same
+  way twice: does "tries" mean questions or runs, and when an answer names
+  two files, which one counts? The revision answers both and is harder to
+  pass than the original.
+
+### Were criteria 1 to 3 set too low?
+
+Probably. Clearing three criteria with no misses on the first try usually
+means the bar was safe. Criteria 1 and 3 were met by a wide margin: the
+real answers were always in the top 5, and the gate gap is about 0.45 wide.
+If I set them again I'd tighten criterion 1 to "the top-ranked chunk is
+about the right place and contains the answer, 5 of 5". The Kestrel
+question would fail that, because its top chunk is the follow-up post and
+the original Kestrel post only comes in at rank 5 (distance 0.446).
 
 ## Diagnoses
 
